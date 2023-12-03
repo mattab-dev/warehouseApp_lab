@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.warehouse.model.enums.SupportedMetalType;
 import org.warehouse.model.exceptions.ClientNotFoundException;
+import org.warehouse.model.exceptions.FullWarehouseException;
+import org.warehouse.model.exceptions.ProhibitedMetalTypeException;
 import org.warehouse.model.pojos.MetalIngot;
 
 import java.time.LocalDate;
@@ -138,6 +140,31 @@ class WarehouseServiceTest {
     }
 
     @Test
+    public void addMetalIngot_prohibitedMetalType() {
+        // given
+        final String clientId = this.warehouseService.createNewClient("Andrzej", "Test");
+
+        // when
+        Exception expectedException = assertThrows(ProhibitedMetalTypeException.class, () -> this.warehouseService.addMetalIngot(clientId, GOLD, 20.5));
+
+        // then
+        assertNotNull(expectedException);
+    }
+
+    @Test
+    public void addMetalIngot_warehouseFull() {
+        // given
+        final String clientId = this.warehouseService.createNewClient("Andrzej", "Test");
+        this.warehouseService.activatePremiumAccount(clientId);
+
+        // when
+        Exception expectedException = assertThrows(FullWarehouseException.class, () -> this.warehouseService.addMetalIngot(clientId, PLATINUM, 1000.5));
+
+        // then
+        assertNotNull(expectedException);
+    }
+
+    @Test
     public void getMetalTypesToMassStoredByClient_notExistingClient() {
         // given
         final String clientId = this.warehouseService.createNewClient("Andrzej", "Test");
@@ -156,7 +183,7 @@ class WarehouseServiceTest {
         this.warehouseService.addMetalIngot(clientId, IRON, 20.5);
         this.warehouseService.addMetalIngot(clientId, IRON, 20.5);
         this.warehouseService.addMetalIngot(clientId, COPPER, 100.0);
-        this.warehouseService.addMetalIngot(clientId, PLATINUM, 10.0);
+        this.warehouseService.addMetalIngot(clientId, TUNGSTEN, 10.0);
 
         // when
         final Map<SupportedMetalType, Double> values = this.warehouseService.getMetalTypesToMassStoredByClient(clientId);
@@ -164,19 +191,19 @@ class WarehouseServiceTest {
         // then
         assertEquals(values.get(IRON), 41.0);
         assertEquals(values.get(COPPER), 100.0);
-        assertEquals(values.get(PLATINUM), 10.0);
+        assertEquals(values.get(TUNGSTEN), 10.0);
         assertEquals(values.size(), 3);
     }
 
     @Test
-    public void getStoredMetalTypesByClien_existingClient() {
+    public void getStoredMetalTypesByClient_existingClient() {
         // given
         final String clientId = this.warehouseService.createNewClient("Andrzej", "Test");
         this.warehouseService.addMetalIngot(clientId, IRON, 20.5);
         this.warehouseService.addMetalIngot(clientId, IRON, 20.5);
         this.warehouseService.addMetalIngot(clientId, COPPER, 100.0);
-        this.warehouseService.addMetalIngot(clientId, PLATINUM, 10.0);
-        this.warehouseService.addMetalIngot(clientId, PLATINUM, 15.0);
+        this.warehouseService.addMetalIngot(clientId, TUNGSTEN, 10.0);
+        this.warehouseService.addMetalIngot(clientId, TUNGSTEN, 15.0);
         this.warehouseService.addMetalIngot(clientId, SILVER, 10.0);
 
         // when
@@ -193,13 +220,13 @@ class WarehouseServiceTest {
         this.warehouseService.addMetalIngot(clientId, IRON, 20.5);
         this.warehouseService.addMetalIngot(clientId, IRON, 20.5);
         this.warehouseService.addMetalIngot(clientId, COPPER, 100.0);
-        this.warehouseService.addMetalIngot(clientId, PLATINUM, 10.0);
-        this.warehouseService.addMetalIngot(clientId, PLATINUM, 15.0);
+        this.warehouseService.addMetalIngot(clientId, TUNGSTEN, 10.0);
+        this.warehouseService.addMetalIngot(clientId, TUNGSTEN, 15.0);
         this.warehouseService.addMetalIngot(clientId, SILVER, 10.0);
 
         final MetalIngot ironIngot = new MetalIngot(IRON, 41.0);
         final MetalIngot copperIngot = new MetalIngot(COPPER, 100.0);
-        final MetalIngot platinumIngot = new MetalIngot(PLATINUM, 25.0);
+        final MetalIngot platinumIngot = new MetalIngot(TUNGSTEN, 25.0);
         final MetalIngot silverIngot = new MetalIngot(SILVER, 10.0);
 
         Double totalVolume = ironIngot.getVolume() + copperIngot.getVolume() + platinumIngot.getVolume() + silverIngot.getVolume();
@@ -222,7 +249,6 @@ class WarehouseServiceTest {
 
         // then
         assertEquals(now, createDate);
-
     }
 
 }

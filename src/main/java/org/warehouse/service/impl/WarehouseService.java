@@ -16,12 +16,18 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
+import static org.warehouse.model.enums.SupportedMetalType.GOLD;
+import static org.warehouse.model.enums.SupportedMetalType.PLATINUM;
 
 @NoArgsConstructor
 @Setter
 @Getter
 public class WarehouseService implements Clients, Warehouse {
+
+    private final static double MAX_MASS_ALLOWED = 1000.0;
+    private final static List<SupportedMetalType> PREMIUM_METALS = asList(PLATINUM, GOLD);
 
     private List<Client> clientsData = new ArrayList<>();
     private Map<String, List<MetalIngot>> assignedMetals = new HashMap<>();
@@ -80,18 +86,34 @@ public class WarehouseService implements Clients, Warehouse {
         return (int) clientsData.stream().filter(Client::isPremiumAccount).count();
     }
 
-    private Client findClientOnTheList(final String clientId) {
+    public Client findClientOnTheList(final String clientId) {
         final Optional<Client> optClient = clientsData.stream().filter(client -> client.getClientId().equals(clientId)).findFirst();
         return optClient.orElse(null);
     }
 
     @Override
     public void addMetalIngot(String clientId, SupportedMetalType metalType, double mass) throws ClientNotFoundException, ProhibitedMetalTypeException, FullWarehouseException {
+        final Client client = findClientOnTheList(clientId);
         final List<MetalIngot> metalList = assignedMetals.get(clientId);
-        if(metalList == null) {
+
+        if (client == null || metalList == null) {
             throw new ClientNotFoundException();
         }
+        if (!client.isPremiumAccount() && PREMIUM_METALS.contains(metalType)) {
+            throw new ProhibitedMetalTypeException();
+        }
+        if (getTotalMassForClient(clientId) + mass > MAX_MASS_ALLOWED) {
+            throw new FullWarehouseException();
+        }
         metalList.add(new MetalIngot(metalType, mass));
+    }
+
+    private double getTotalMassForClient(final String clientId) throws ClientNotFoundException {
+        final List<MetalIngot> metalList = assignedMetals.get(clientId);
+        if(metalList != null) {
+            return metalList.stream().map(MetalIngot::getMass).reduce(0.0, Double::sum);
+        }
+        throw new ClientNotFoundException();
     }
 
     @Override
